@@ -1,0 +1,18 @@
+{% if template.name == 'password' %}
+  {{ shop.name }}
+{% else %}
+  {{ page_title }}
+  {% if current_tags %}
+    {% assign meta_tags = current_tags | join: ', ' %}
+    &nbsp;&ndash;&nbsp;
+    {{ 'general.meta.tags' | t: tags: meta_tags }}
+  {% endif %}
+  {% if current_page != 1 %}
+    &nbsp;&ndash;&nbsp;
+    {{ 'general.meta.page' | t: page: current_page }}
+  {% endif %}
+  {% unless page_title contains shop.name %}
+    &nbsp;&ndash;&nbsp;
+    {{ shop.name }}
+  {% endunless %}
+{% endif %}

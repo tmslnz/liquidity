@@ -1,0 +1,79 @@
+{% comment %}
+Generate responsive image markup
+{% endcomment %}
+
+{% comment %} when used via "with" {% endcomment %}
+{% if responsive_image %}
+	{% assign image = responsive_image %}
+{% endif %}
+
+{% comment %}
+Is it an image object or a string?
+{% endcomment %}
+{% if image.aspect_ratio == nil and image contains '<img ' %}
+	{% assign ri_is_img_tag = true %}
+{% elsif image.aspect_ratio == nil %}
+	{% assign ri_is_url = true %}
+{% endif %}
+
+{% capture ri_steps %}{{steps | default: '200,400,600,800,1000,1200' }}{% endcapture %}
+{% assign ri_steps = ri_steps | split: ',' %}
+
+{% capture ri_sizes %}{{sizes | default: '50vw'}}{% endcapture %}
+
+{% capture ri_class %}{{class | default: ''}}{% endcapture %}
+
+{% if ri_is_img_tag or ri_is_url %}
+	{% comment %}
+	Code for Shopify image urls
+	{% endcomment %}
+	{% if ri_is_img_tag %}
+		{% include 'util-parse_element' with imagetag %}
+	    {% include 'util-attribute_value' with 'src' %}
+	    {% assign ri_url = attribute_value %}
+	{% else %}
+	    {% assign ri_url = image %}
+	{% endif %}
+    {% include 'util-clean_img_url' with ri_url %}
+	{% comment %}✈️ {{ clean_img_url }}{% endcomment %}
+    {% capture ri_srcset %}
+    	{% for ri_size in ri_steps %}
+	    	{{clean_img_url | append: '_' | append: ri_size | append: 'x' | append: clean_img_extension}}{{' '}}{{ri_size | append: 'w'}}{{','}}
+    	{% endfor %}
+    {% endcapture %}
+    {% assign ri_src = clean_img_url | append: clean_img_extension %}
+	<img
+		id="image-{{clean_img_url | replace: '//cdn.shopify.com', '' | replace: '/', '-'}}"
+		class="{{ri_class}}"
+		src="{{ri_src}}"
+		srcset="{{ri_srcset}}"
+		sizes="{{ri_sizes}}"
+		alt=""
+		draggable="false"
+		>
+{% else %}
+	{% comment %}
+	Code for Shopify image objects
+	{% endcomment %}
+	{% capture ri_srcset %}
+		{% for ri_size in ri_steps %}
+			{% assign ri_sizex = ri_size | append: 'x' %}
+			{{image | img_url: ri_sizex}}{{' '}}{{ri_size | append: 'w'}}{{','}}
+		{% endfor %}
+	{% endcapture %}
+	{% capture ri_src %}
+		{% assign ri_base_size = ri_steps[0] | append: 'x' %}
+		{{image | img_url: ri_base_size}}
+	{% endcapture %}
+	<img
+		id="image-{{image.id}}"
+		class="{{ri_class}}"
+		src="{{ri_src}}"
+		srcset="{{ri_srcset}}"
+		sizes="{{ri_sizes}}"
+		width="{{ri_steps[0]}}"
+		height="{{ri_steps[0] | divided_by: image.aspect_ratio | floor}}"
+		alt="{{ image.alt | escape }}"
+		draggable="false"
+		>
+{% endif %}

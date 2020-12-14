@@ -1,0 +1,43 @@
+{% comment %} Recognised shortcode ids {% endcomment %}
+{% assign isc_valid_shortcode_ids = 'option,image' | split: ',' %}
+
+{% comment %} Null values {% endcomment %}
+{% assign image_shortcode = nil %}
+{% assign image_shortcode_id = nil %}
+{% assign image_shortcode_value = nil %}
+
+{% comment %}
+1. [shortcode   Color:Blue]
+2. [shortcode Color:Blue] (remove double spaces)
+3. [shortcode color:blue] (downcase)
+4. **[shortcode color:blue]** (prepend, append)
+5. **[shortcode color:blue[** (replace ']' > '[')
+6. **,shortcode color:blue,** (split by '[')
+{% endcomment %}
+{% assign ifo_image_alt_parts = image.alt | replace: '  ',' ' | downcase | strip | prepend: '**' | append: '**' | replace: ']','[' | split: '[' %}
+
+{% comment %}
+Test if the possbile shortcode is actually one and assign values
+{% endcomment %}
+{% if ifo_image_alt_parts.size >= 3 %}
+	{% comment %}
+	Allow for spaces in the shortcode value:
+	1. shortcode color:blue sky
+	2. shortcode%%color:blue sky
+	3. shortcode,color:blue sky
+	{% endcomment %}
+	{% assign isc_shortcode_parts = ifo_image_alt_parts[1] | replace_first: ' ','%%' | split: '%%' %}
+	{% assign isc_shortcode_id = isc_shortcode_parts[0] %}
+	{% assign isc_contains_valid_shortcode = false %}
+	{% for isc_valid_shortcode_id in isc_valid_shortcode_ids %}
+		{% if isc_valid_shortcode_id == isc_shortcode_id %}
+			{% assign isc_contains_valid_shortcode = true %}
+			{% break %}
+		{% endif %}
+	{% endfor %}
+	{% if isc_contains_valid_shortcode %}
+		{% assign image_shortcode = ifo_image_alt_parts[1] %}
+		{% assign image_shortcode_id = isc_shortcode_id %}
+		{% assign image_shortcode_value = isc_shortcode_parts[1] %}
+	{% endif %}
+{% endif %}

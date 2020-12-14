@@ -1,0 +1,11 @@
+{% assign body_classes = nil %}
+{% capture ubc_classes %}
+	{% if product.handle %}
+		product-{{product.handle}}{{' '}}
+	{% endif %}
+	{% if collection.handle %}
+		collection-{{collection.handle}}{{' '}}
+	{% endif %}
+	template-{{ template | replace: '.', ' ' | truncatewords: 1, '' | handle }}
+{% endcapture %}
+{% assign body_classes = ubc_classes | strip_newlines %}

@@ -1,0 +1,6 @@
+{% comment %} Check if the image ALT attribute contains an "option:value" and nothing else {% endcomment %}
+{% assign is_product_image = true %}
+{% include 'util-image_shortcode' %}
+{% if image_shortcode_id == 'option' %}
+	{% assign is_product_image = false %}
+{% endif %}

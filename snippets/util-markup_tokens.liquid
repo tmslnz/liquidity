@@ -1,0 +1,316 @@
+{% comment %}
+
+Given an HTML string:
+1. finds Shopify CDN images and text and stores both in separate variables.
+2. Splits content into sections
+
+Exports:
+markup_images <array> ['<img src="blah" alt="bleh"/>']
+markup_text <string> '<h1>Title</h1><p>Text</p>'
+markup_links <array> ['http://example.com', '/mario.com']
+markup_section_titles <array> ['Default', 'Part Two', 'Part Three']
+markup_section_handles <array> ['default', 'part-two', 'part-three']
+markup_sections <array> ['<h1>Title</h1><p>Text</p>', '<p>Some</p>', '<p>More</p>']
+
+Example Usage:
+// Extract a section marked as "Specifc Section"
+{% include 'util-markup_tokens' with pages['new-stuff'].content %}
+{% for section in markup_sections %}
+    {% if markup_section_handles[forloop.index0] == 'specific-section' %}
+        <h1>markup_section_titles[forloop.index0]</h1>
+        {{ section }}
+    {% endif %}
+{% endfor %}
+
+// Get all Shopify CDN image tags
+{% include 'util-markup_tokens' with pages['april-promo'].content %}
+{% for image_tag in markup_images %}
+    {{ image_tag }}
+{% endfor %}
+
+{% endcomment %}
+
+
+
+{% comment %}
+Required params:
+- HTML
+- Section identifier
+{% endcomment %}
+{% if html %}
+    {% assign umt_string = html %}
+{% elsif util-markup_tokens %}
+    {% assign umt_string = util-markup_tokens %}
+{% elsif page and page.content.size > 0 %}
+    {% assign umt_string = page.content %}
+{% endif %}
+
+{% if section_identifier %}
+    {% assign umt_section_identifier = section_identifier %}
+{% else %}
+    {% assign umt_section_identifier = '[section' %}
+{% endif %}
+
+
+
+{% comment %}
+Initialise vars
+{% endcomment %}
+{% assign markup_images = nil %}
+{% assign markup_iframes = nil %}
+{% assign markup_text = '' %}
+{% assign markup_links = nil %}
+{% assign markup_section_titles = 'Default+,+' %}
+{% assign markup_section_handles = 'default+,+' %}
+{% assign markup_sections = nil %}
+
+
+
+{% comment %}
+Tokenize
+{% endcomment %}
+{% if umt_string == nil %}
+    {% comment %} noop {% endcomment %}
+{% else %}
+    {% comment %}
+    It is possible text is not marked up in HTML tags if it's a single line.
+    In this case, pad the string with <p> tags.
+    {% endcomment %}
+    {% assign umt_string = umt_string | strip %}
+    {% assign umt_string_first_char = umt_string | first %}
+    {% assign umt_string_last_char = umt_string | last %}
+    {% if umt_string_first_char != '<' or umt_string_last_char != '>' %}
+        {% assign umt_string = umt_string | prepend: '<p>' | append: '</p>' %}
+    {% endif %}
+
+    {% comment %}
+    Begin!
+    =====
+
+    <!--section First Part-->
+    <h1>Title</h1>
+    <p>Hello world</p>
+    <img src="//cdn.shopify.com/dog.jpg"/>
+    <p>section Last Part</p>
+    <img src="//cdn.shopify.com/cat.jpg"/>
+
+    0.  !--section First Part-->
+    1.  h1>Title
+    2.  /h1>
+    3.  p>Hello world
+    4.  /p>
+    5.  img src="//cdn.shopify.com/dog.jpg"/>
+    6.  p>section Last Part</p>
+    7.  img src="//cdn.shopify.com/cat.jpg"/>
+
+    {% endcomment %}
+    {% assign umt_chunks = umt_string | split: '<' %}
+
+    {% comment %}
+    Grab image tags from chunks
+    ===========================
+
+    5.  img src="//cdn.shopify.com/dog.jpg"/>
+    7.  img src="//cdn.shopify.com/cat.jpg"/>
+
+    0.  <img src="//cdn.shopify.com/dog.jpg"/>
+    1.  <img src="//cdn.shopify.com/cat.jpg"/>
+
+    {% endcomment %}
+    {% capture markup_images %}
+        {% for chunk in umt_chunks %}
+            {% if chunk contains '//cdn.shopify.com' %}
+                <{{ chunk }}+,+
+            {% endif %}
+        {% endfor %}
+    {% endcapture %}
+    {% assign markup_images = markup_images | strip_newlines | split: '+,+' %}
+
+    {% comment %}
+    Grab IFRAMEs
+    ===========================
+
+    7.  iframe src="http://vimeo.com/…"/>
+
+    0.  <iframe src="http://vimeo.com/…"/>
+
+    {% endcomment %}
+    {% capture markup_iframes %}
+        {% for chunk in umt_chunks %}
+            {% assign chunk_start = chunk | slice: 0,6 %}
+            {% if chunk_start == 'iframe' %}
+                <{{ chunk }}+,+
+            {% endif %}
+        {% endfor %}
+    {% endcapture %}
+    {% assign markup_iframes = markup_iframes | strip_newlines | split: '+,+' %}
+
+    {% comment %}
+    Grab non-image tags
+    ===================
+
+    0.  !--section First Part-->
+    1.  h1>Title
+    2.  /h1>
+    3.  p>Hello world
+    4.  /p>
+    5.  p>section Last Part</p>
+
+    <h1>Title</h1><p>Hello world</p>
+
+    {% endcomment %}
+    {% capture markup_text %}
+        {% for chunk in umt_chunks %}
+            {% unless chunk contains '//cdn.shopify.com' or chunk == '' %}
+                <{{ chunk }}
+            {% endunless %}
+        {% endfor %}
+    {% endcapture %}
+    {% assign markup_text = markup_text | strip_newlines %}
+
+    {% comment %}
+    Split content into sections
+    ===========================
+
+    Section identifiers:
+    - element: >section
+    - comment: !--section
+
+    0.  !--section First Part-->
+    1.  h1>Title
+    2.  /h1>
+    3.  p>Hello world
+    4.  /p>
+    5.  img src="//cdn.shopify.com/dog.jpg"/>
+    6.  p> section Last Part
+    7.  /p>
+    8.  img src="//cdn.shopify.com/cat.jpg"/>
+
+    haystack = p>sectionLastPart
+    chunk_split = p> section Last Part
+    chunk_text = section Last Part
+
+    chunk_split = section Last Part
+    section_title = Last Part
+    section_handle = last-part
+    markup_section_handles = [
+        0.  first-part
+        1.  last-part
+    ]
+    markup_section_titles = [
+        0.  First Part
+        1.  Last Part
+    ]
+    markup_sections = [
+        0.  <h1>Title</h1><p>Hello world</p><img src="//cdn.shopify.com/dog.jpg"/>
+        1.  <img src="//cdn.shopify.com/cat.jpg"/>
+    ]
+
+    {% endcomment %}
+    {% assign umt_last_section_handle = 'default' %}
+    {% assign umt_section_handle = 'default' %}
+    {% assign umt_section_title = 'Default' %}
+    {% assign umt_skip_next_chunk = false %}
+    {% assign umt_needle_a = umt_section_identifier | prepend: '>' %}
+    {% assign umt_needle_b = umt_section_identifier | prepend: '!--' %}
+    {% capture markup_sections %}
+        {% for chunk in umt_chunks %}
+            {% comment %} Find and assign current section handle {% endcomment %}
+            {% assign umt_needle_found = false %}
+            {% assign umt_haystack = chunk | replace: ' ', '' %}
+            {% assign umt_chunk_split = chunk | replace: '  ', ' ' %}
+            {% assign umt_chunk_text = chunk | split: '>' | last | strip %}
+            {% if umt_haystack contains umt_needle_a %}
+                {% assign umt_needle_found = umt_needle_a %}
+                {% assign umt_chunk_split = umt_chunk_split | split: '>' | last %}
+            {% elsif umt_haystack contains umt_needle_b %}
+                {% assign umt_needle_found = umt_needle_b %}
+                {% assign umt_chunk_split = umt_chunk_split | split: '!--' | last %}
+            {% endif %}
+            {% if umt_needle_found != false %}
+                {% if umt_needle_found == umt_needle_b %}
+                    {% assign umt_chunk_split = umt_chunk_split | remove_first: '-->' | strip %}
+                {% endif %}
+                {% assign umt_section_title = umt_chunk_split | remove_first: umt_section_identifier | strip %}
+                {% assign umt_section_handle = umt_section_title | handle %}
+                {% assign markup_section_handles = markup_section_handles | append: umt_section_handle | append: '+,+' %}
+                {% assign markup_section_titles = markup_section_titles | append: umt_section_title | append: '+,+' %}
+                {% if umt_needle_found == umt_needle_a %}
+                    {% assign umt_skip_next_chunk = true %}
+                    {% continue %}
+                {% endif %}
+            {% endif %}
+            {% comment %} Check for &nbsp; {% endcomment %}
+            {% if chunk.first != '/' and umt_chunks[forloop.index].first == '/' %}
+                {% if umt_chunk_text == ' ' or umt_chunk_text.size == 0 %}
+                    {% assign umt_skip_next_chunk = true %}
+                    {% continue %}
+                {% endif %}
+            {% endif %}
+            {% unless chunk == '' or umt_skip_next_chunk %}
+                <{{ chunk }}
+            {% endunless %}
+            {% assign umt_skip_next_chunk = false %}
+            {% comment %} If the section handle changes, append a section separator {% endcomment %}
+            {% if umt_last_section_handle != umt_section_handle %}
+                +,+
+                {% assign umt_last_section_handle = umt_section_handle %}
+            {% endif %}
+        {% endfor %}
+    {% endcapture %}
+    {% assign markup_sections = markup_sections | strip_newlines | split: '+,+' %}
+    {% assign markup_section_handles = markup_section_handles | strip_newlines | split: '+,+' %}
+    {% assign markup_section_titles = markup_section_titles | strip_newlines | split: '+,+' %}
+
+    {% comment %} Capture links {% endcomment %}
+    {% capture umt_internal_links %}
+        {% assign umt_internal_links = '/collections /products /pages /blogs' | split: ' ' %}
+        {% assign umt_shop_url = shop.url | replace: '//', '' | replace: 'https:', '' %}
+        {% for path in umt_internal_links %}
+            {{ path }}{{' '}}
+            {{ path | prepend: shop.url }}{{' '}}
+            {{ path | prepend: umt_shop_url }}{{' '}}
+        {% endfor %}
+    {% endcapture %}
+    {% assign umt_internal_links = umt_internal_links | strip_newlines | split: ' ' %}
+
+    {% capture markup_links %}
+        {% for chunk in umt_chunks %}
+            {% assign umt_href = chunk | split: 'href="' | last | split: '"' | first %}
+            {% assign umt_link_found = false %}
+            {% for path in umt_internal_links %}
+                {% if umt_href contains path %}
+                    {% assign umt_link_found = umt_href %}
+                    {% break %}
+                {% endif %}
+            {% endfor %}
+            {% if umt_link_found != false %}
+                {{ umt_href }}{{'+,+'}}
+            {% endif %}
+        {% endfor %}
+    {% endcapture %}
+    {% assign markup_links = markup_links | strip_newlines | split: '+,+' %}
+{% endif %}
+
+
+{% comment %}DEBUG{% endcomment %}
+
+{% comment %}{% for chunk in umt_chunks %}
+    <p>{{ forloop.index0 }}:{{ chunk }}</p>
+{% endfor %}{% endcomment %}
+
+{% comment %}{% for chunk in markup_links %}
+    {% unless chunk == '' %}
+    <p>{{ forloop.index0 }}:{{ chunk }}</p>
+    {% endunless %}
+{% endfor %}{% endcomment %}
+
+{% comment %}{% for chunk in markup_sections %}
+    {% unless chunk == '' %}
+    <h1>{{ forloop.index0 }}: {{ markup_section_handles[forloop.index0] }} - {{ markup_section_titles[forloop.index0] }}</h1>
+    <p>{{ forloop.index0 }}: {{ chunk | escape }}</p>
+    <hr>
+    {% endunless %}
+{% endfor %}{% endcomment %}
+
+

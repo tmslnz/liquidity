@@ -1,0 +1,68 @@
+{% comment %}
+    Used like
+    {% include 'content' with page.content %}
+{% endcomment %}
+
+
+{% assign c_content = content %}
+
+{% comment %}
+    Get the original markup in "markup_sections" array
+{% endcomment %}
+{% include 'util-markup_tokens' with c_content %}
+
+{% comment %}
+    Wrap all sections' markup except the last (if markup_sections is longer than 1)
+{% endcomment %}
+{% capture c_markup %}
+    {% for markup in markup_sections %}
+        <div class="shopify-content" data-content-section-handle="{{ markup_section_handles[forloop.index0] }}" data-content-section-title="{{ markup_section_titles[forloop.index0] }}">
+            {{ markup }}
+        </div>
+    {% endfor %}
+{% endcapture %}
+
+{% comment %}
+    Make images responsive.
+    Parse the captured markup, iterate over each IMG tag
+    and if the tag is present (could be in the "last" markup-section, which is skipped)
+    replace it with a responsive version.
+{% endcomment %}
+{% include 'util-markup_tokens' with c_markup %}
+{% unless markup_images.size == 0 %}
+    {% for imagetag in markup_images %}
+        {% if c_markup contains imagetag %}
+            {% capture imagetag_responsive %}
+                {% include 'responsive_image', image: imagetag %}
+            {% endcapture %}
+            {% capture c_markup_replaced %}
+                {{ c_markup | replace: imagetag, imagetag_responsive }}
+            {% endcapture %}
+            {% assign c_markup = c_markup_replaced %}
+        {% endif %}
+    {% endfor %}
+{% endunless %}
+
+{% comment %}
+    Make IFRAMEs responsive
+    Parse the captured markup, iterate over each IFRAME tag
+    and if the tag is present (could be in the "last" markup-section, which is skipped)
+    replace it with a responsive version.
+{% endcomment %}
+{% include 'util-markup_tokens' with c_markup %}
+{% unless markup_iframes.size == 0 %}
+    {% for iframe in markup_iframes %}
+        {% comment %}{{ iframe }}{% endcomment %}
+        {% if c_markup contains iframe %}
+            {% capture iframe_responsive %}
+                {% include 'responsive_embed' with iframe %}
+            {% endcapture %}
+            {% capture c_markup_replaced %}
+                {{ c_markup | replace: iframe, iframe_responsive }}
+            {% endcapture %}
+            {% assign c_markup = c_markup_replaced %}
+        {% endif %}
+    {% endfor %}
+{% endunless %}
+
+{{ c_markup | strip_newlines }}

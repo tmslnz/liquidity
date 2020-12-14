@@ -1,0 +1,30 @@
+{% comment %}
+Requires util-parse_element_attributes to be called first
+The expected variables are:
+- element_attribute_names
+- element_attribute_values
+{% endcomment %}
+
+{% comment %}
+Returns an attribute string "element_attributes" without some of the original attributes
+{% endcomment %}
+
+{% assign ra_attributes_to_remove = util-remove_attributes %}
+{% assign ra_attributes_to_remove = ra_attributes_to_remove | replace: ' ','' | split: ',' %}
+{% capture element_attributes %}
+	{% for ra_name in element_attribute_names %}
+		{% assign ra_match_found = false %}
+		{% for ra_name_to_remove in ra_attributes_to_remove %}
+			{% if ra_name == ra_name_to_remove %}
+				{% assign ra_match_found = true %}
+				{% break %}
+			{% endif %}
+		{% endfor %}
+		{% unless ra_match_found %}
+			{{ ra_name }}="{{ element_attribute_values[forloop.index0] }}"{{' '}}
+		{% endunless %}
+	{% endfor %}
+{% endcapture %}
+
+{% comment %} Refresh the parse {% endcomment %}
+{% include 'util-parse_element_attributes' with element_attributes %}

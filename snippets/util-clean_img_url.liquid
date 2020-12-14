@@ -1,0 +1,46 @@
+{% comment %}
+Clean up shopify img URLs.
+Useful for .content blocks with user-entered images.
+{% endcomment %}
+
+{% capture ciu_split_markers %}
+    _pico _icon _thumb _small _compact _medium _large _grande
+    _1 _2 _3 _4 _5 _6 _7 _8 _9
+    _x1 _x2 _x3 _x4 _x5 _x6 _x7 _x8 _x9
+{% endcapture %}
+{% assign ciu_split_markers = ciu_split_markers | strip_newlines | replace: '  ',' ' | split: ' ' %}
+
+{% assign ciu_ambigous_markers = '_1_2_3_4_5_6_7_8_9' %}
+
+{% assign clean_img_url = util-clean_img_url %}
+{% assign clean_img_param = '' %}
+{% assign clean_img_extension = clean_img_url | split: '.' | last | prepend: '.' %}
+{% comment %}{% assign clean_img_url = clean_img_url | replace: clean_img_extension, '' %}{% endcomment %}
+
+{% for marker in ciu_split_markers %}
+	{% assign ciu_img_param = clean_img_url | split: marker | last | prepend: marker | split: clean_img_extension | first %}
+	{% if ciu_img_param contains 'x' %}
+	{% elsif ciu_ambigous_markers contains marker %}
+		{% comment %} False positive {% endcomment %}
+		{% assign clean_img_url = clean_img_url | replace: clean_img_extension, '' %}
+		{% continue %}
+	{% endif %}
+	{% assign ciu_img_url_sans_jit = clean_img_url | split: ciu_img_param | first %}
+	{% if ciu_img_url_sans_jit.size < clean_img_url.size %}
+		{% assign clean_img_url = ciu_img_url_sans_jit %}
+		{% assign clean_img_param = ciu_img_param %}
+		{% break %}
+	{% endif %}
+{% endfor %}
+
+{% comment %} Test {% endcomment %}
+{% capture ciu_test_strings %}
+	https://cdn.shopify.com/s/files/1/products/TEST_1_x100_crop_left.jpg?v=1551443617
+	https://cdn.shopify.com/s/files/1/products/TEST_2_200x.jpg?v=1551443617
+	https://cdn.shopify.com/s/files/1/products/TEST_3_compact.jpg?v=1551443617
+	https://cdn.shopify.com/s/files/1/products/_COMPACT_TEST_4_compact.jpg?v=1551443617
+	https://cdn.shopify.com/s/files/1/products/_x300_TEST_5_x300_crop_center.jpg?v=1551443617
+	https://cdn.shopify.com/s/files/1/products/TEST_6.jpg?v=1551443617
+	https://cdn.shopify.com/s/files/1/products/_x300_TESTCompact_compact_crop_center.jpg?v=1551443617
+{% endcapture %}
+{% assign ciu_test_strings = ciu_test_strings | strip_newlines | replace: '  ',' ' | split: ' ' %}

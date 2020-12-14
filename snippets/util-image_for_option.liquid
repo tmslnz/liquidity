@@ -1,0 +1,16 @@
+{% assign image_for_option = nil %}
+{% assign ifo_option_name = option_name %}
+{% assign ifo_option_value = option_value %}
+{% comment %}
+color + Aqua Green
+color:aqua green
+{% endcomment %}
+{% assign ifo_needle = ifo_option_name | append: ':' | append: ifo_option_value | downcase %}
+{% comment %} Pick the first image with an alt value containing the string "key:value" {% endcomment %}
+{% for image in product.images %}
+	{% include 'util-image_shortcode' %}
+	{% if image_shortcode_id == 'option' and image_shortcode_value == ifo_needle %}
+		{% assign image_for_option = image %}
+		{% break %}
+	{% endif %}
+{% endfor %}

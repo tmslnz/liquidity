@@ -1,0 +1,84 @@
+{% comment %} Exported variables {% endcomment %}
+{% assign element_attribute_names = nil %}
+{% assign element_attribute_values = nil %}
+
+{% capture pea_test_string %}
+width="560" height="315" src="https://www.youtube.com/embed/_fKKsqMPBZA" attr1 attr2 frameborder="0" attr3 attr4 allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen dario="{asd:1}"
+{% endcapture %}
+{% assign pea_test_result = nil %}
+
+{% comment %} Capture in a list like ['attr="value", attr="value"'] {% endcomment %}
+{% assign pea_attributes = util-parse_element_attributes %}
+{% assign pea_attributes = pea_attributes | split: '>' | first | split: ' ' %}
+{% capture pea_attributes %}
+	{% assign concat = false %}
+	{% for part in pea_attributes %}
+			{% assign last_char = part | slice: -1 %}
+			{% if last_char == '"' %}
+				{% assign concat = false %}
+			{% elsif part contains '="' %}
+				{% assign concat = true %}
+			{% endif %}
+			{% if concat %}
+				{{part | append: ' '}}
+			{% else %}
+				{{part | append: '%-%'}}
+			{% endif %}
+	{% endfor %}
+{% endcapture %}
+{% assign pea_attributes = pea_attributes | replace: '	',' ' | replace: '  ',' ' | strip_newlines | split: '%-%' %}
+
+{% comment %} Split attribute names into list {% endcomment %}
+{% capture pea_attribute_names %}
+	{% for item in pea_attributes %}
+		{{ item | split: '="' | first | append: '%-%' }}
+	{% endfor %}
+{% endcapture %}
+{% assign pea_attribute_names = pea_attribute_names | replace: '	',' ' | replace: '  ',' ' | strip_newlines | split: '%-%' %}
+
+{% comment %} Split attribute values into list {% endcomment %}
+{% capture pea_attribute_values %}
+	{% for item in pea_attributes %}
+		{% assign parts = item | split: '"' %}
+		{% for part in parts %}
+			{% if forloop.last %}
+				{% assign chars = part | split: '' %}
+				{% comment %} For no-value attributes, remove the '=' at the end {% endcomment %}
+				{% for char in chars %}
+					{% if forloop.last and char == '=' %}
+						{{'%-%'}}
+					{% elsif forloop.last %}
+						{{ char | append: '%-%'}}
+					{% else %}
+						{{ char }}
+				    {% endif %}
+				{% endfor %}
+			{% elsif forloop.first %}
+				{% comment %} This is the attribute name part {% endcomment %}
+				{% comment %} NOOP {% endcomment %}
+			{% else %}
+				{{ part | append: '"'}}
+			{% endif %}
+		{% endfor %}
+	{% endfor %}
+{% endcapture %}
+{% assign pea_attribute_values = pea_attribute_values | replace: '	',' ' | replace: '  ',' ' | strip_newlines | split: '%-%' %}
+
+
+{% comment %} Assign results to "API" variables {% endcomment %}
+{% if pea_attribute_names %}
+	{% assign element_attribute_names = pea_attribute_names %}{% endif %}
+{% if pea_attribute_values %}
+	{% assign element_attribute_values = pea_attribute_values %}{% endif %}
+
+{% comment %} Test util {% endcomment %}
+{% capture pea_test_result %}
+<pre>
+<strong>Attribute Names: </strong><br>
+{% for element_name in element_attribute_names %}
+	{{forloop.index0}}. {{element_name}}: {{element_attribute_values[forloop.index0]}}
+{% endfor %}
+</pre>
+{% endcapture %}
+
+{% comment %}{{pea_test_result}}{% endcomment %}

@@ -1,0 +1,13 @@
+{% assign attribute_value = nil %}
+{% assign av_requested_attr_name = util-attribute_value %}
+{% capture av_attribute_value %}
+    {% for av_attr_name in element_attribute_names %}
+        {% if av_attr_name == av_requested_attr_name %}
+            {{ element_attribute_values[forloop.index0] }}
+        {% endif %}
+    {% endfor %}
+{% endcapture %}
+{% assign av_attribute_value = av_attribute_value | strip %}
+{% if av_attribute_value %}
+	{% assign attribute_value = av_attribute_value %}
+{% endif %}

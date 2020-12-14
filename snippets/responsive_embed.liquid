@@ -1,0 +1,27 @@
+{% assign re_html = responsive_embed %}
+
+{% include 'util-parse_element' with re_html %}
+{% include 'util-remove_attributes' with 'style'  %}
+
+{% if element_name != 'iframe' %}
+	{{ re_html }}
+{% else %}
+	{% include 'util-attribute_value' with 'width' %}
+	{% assign re_width = attribute_value | times: 1.0 %}
+	{% include 'util-attribute_value' with 'height' %}
+	{% assign re_height = attribute_value | times: 1.0 %}
+	{% assign re_ratio = re_height | divided_by: re_width | times: 100 %}
+
+	{% comment %} Keep track of IDs {% endcomment %}
+	{% if re_embed_id %}
+		{% assign re_embed_id = re_embed_id | split: '-' | last | times: 1 | plus: 1 %}
+		{% assign re_embed_id = 'embed_id-' | append: re_embed_id %}
+	{% else %}
+		{% assign re_embed_id = 'embed_id-0' %}
+	{% endif %}
+
+
+	<div class="responsive-embed" style="padding-top: {{re_ratio | append: '%'}}; height: 0; position: relative;">
+		<iframe id={{re_embed_id}} style="position: absolute; top: 0; left: 0; width: 100%; height: 100%" {{element_attributes}}></iframe>
+	</div>
+{% endif %}

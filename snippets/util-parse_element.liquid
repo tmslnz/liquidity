@@ -1,0 +1,56 @@
+{% comment %} Exported variables {% endcomment %}
+{% assign element_name = nil %}
+{% assign element_attributes = nil %}
+{% assign element_content = nil %}
+
+{% capture pe_test_html %}
+<iframe width="560" height="315" src="https://www.youtube.com/embed/_fKKsqMPBZA" attr1 attr2 frameborder="0" attr3 attr4 allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen dario="{asd:1}">
+	<a href="should-ignore">text</a>
+	element text
+	<a href="should-ignore">text</a>
+	<iframe src="###">text</iframe>
+</iframe>
+{% endcapture %}
+{% assign pe_test_result = nil %}
+
+{% comment %} Clean up the string {% endcomment %}
+{% assign pe_clean = util-parse_element | replace: '	',' ' | replace: '  ',' ' | strip_newlines %}
+
+{% comment %} Isolate element name {% endcomment %}
+{% assign pe_element = pe_clean | split: ' ' | first | replace: '<','' %}
+
+{% comment %} Isolate element's content and children {% endcomment %}
+{% assign pe_content_start = pe_clean | split: '>' | first | size | plus: 1 %}
+{% assign pe_content = pe_clean | slice: pe_content_start,pe_clean.size  %}
+{% assign pe_content = pe_content | split: '<' %}
+{% capture pe_content %}{% for pe_tent in pe_content %}{% unless forloop.last %}{% if forloop.first %}{{pe_tent}}{% else %}{{pe_tent | prepend: '<'}}{% endif %}{% endunless %}{% endfor %}{% endcapture %}
+{% assign pe_content = pe_content | strip %}
+
+{% comment %} Get attribites string {% endcomment %}
+{% assign pe_attributes = pe_clean | split: pe_element %}
+{% assign pe_attributes = pe_attributes[1] | split: '>' | first %}
+
+{% comment %} Split attributes string into names and values {% endcomment %}
+{% include 'util-parse_element_attributes' with pe_attributes %}
+
+{% comment %} Assign results to "API" variables {% endcomment %}
+{% if pe_element %}
+	{% assign element_name = pe_element %}{% endif %}
+{% if pe_content %}
+	{% assign element_content = pe_content %}{% endif %}
+{% if pe_attributes %}
+	{% assign element_attributes = pe_attributes %}{% endif %}
+
+{% comment %} Test util {% endcomment %}
+{% capture pe_test_result %}
+<pre>
+<strong>Name: </strong>{{element_name}}<br>
+<strong>Content: </strong>{{element_content | escape}}<br>
+<strong>Attribute Names: </strong><br>
+{% for element_name in element_attribute_names %}
+	{{forloop.index0}}. {{element_name}}: {{element_attribute_values[forloop.index0]}}
+{% endfor %}
+</pre>
+{% endcapture %}
+
+{% comment %}{{pe_test_result}}{% endcomment %}

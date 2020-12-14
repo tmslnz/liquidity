@@ -1,0 +1,16 @@
+{% if linklist %}
+
+	<nav class="subnav {{ class | default: '' }}">
+		<div class="toggle page-padding-left">Toggle</div>
+		<div class="arrow page-margin-right"></div>
+		<div class="subnav-list-wrapper limit-site-width page-padding">
+			<ul class="list">
+				{% for link in linklist.links %}
+					<li class="item {% if link.current %}{{' current'}}{% endif %}">{{ link.title | link_to: link.url }}</li>
+				{% endfor %}
+			</ul>
+		</div>
+	</nav>
+
+	<div class="push-content -subnav"></div>
+{% endif %}
